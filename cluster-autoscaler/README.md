@@ -21,7 +21,7 @@ Put the binary under your `DLworkspace/src/ClusterBootstrap` directory.
 
 ## Run:
 ```bash
-./cluster-autoscaler --v=5 --stderrthreshold=error --logtostderr=true --cloud-provider=aztools --skip-nodes-with-local-storage=false --nodes=1:10:dlws-worker-asg --leader-elect=false --scale-down-enabled=false --kubeconfig=./deploy/kubeconfig.yaml
+./cluster-autoscaler --v=5 --stderrthreshold=error --logtostderr=true --cloud-provider=aztools --skip-nodes-with-local-storage=false --nodes=1:10:dlws-worker-asg --leader-elect=false --scale-down-enabled=false --kubeconfig=./deploy/kubeconfig/kubeconfig.yaml
 ```
 ## Note:
 
