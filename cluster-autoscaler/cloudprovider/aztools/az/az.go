@@ -53,38 +53,63 @@ func GetWorkerList(clusterID string) ([]string, error) {
 		}
 	}
 	return machines, nil
-
 }
 
 // OnScaleUp is a function called on node group increase in AzToolsCloudProvider.
 // First parameter is the NodeGroup id, second is the increase delta.
 func OnScaleUp(id string, delta int) error {
-	// Modify worker number in config.yaml
+	// Backup config.yaml
+	output, err := execRun("cp", "config.yaml", "deploy/config.yaml.bak")
+	if err != nil {
+		return fmt.Errorf("%v, %v", err, output)
+	}
+
+	// 1. Modify worker number in config.yaml
 	modifyConfigYaml(delta)
 
-	// Create new vm
-	_, err := execRun("./az_tools.py", "scaleup")
+	// 2. Create new vm
+	output, err = execRun("./az_tools.py", "scaleup")
 	if err != nil {
-		return err
+		restoreConfig()
+		return fmt.Errorf("%v, %v", err, output)
 	}
 
-	// Generate new cluster.yaml
-	_, err = execRun("./az_tools.py", "genconfig")
+	// Backup cluster.yaml
+	output, err = execRun("cp", "cluster.yaml", "deploy/cluster.yaml.bak")
 	if err != nil {
-		// TODO(harry): delete the new scaled node. Restore config.yaml
-		return err
+		restoreConfig()
+		return fmt.Errorf("%v, %v", err, output)
 	}
 
-	// Run scripts in new workers
-	// TODO(harry): do we need to wait for this command finish?
-	_, err = execRun("./deploy.py", "scriptblocks", "add_scaled_worker")
+	// 3. Generate new cluster.yaml
+	output, err = execRun("./az_tools.py", "genconfig")
 	if err != nil {
-		// TODO(harry): delete the new scaled node. Restore config.yaml cluster.yaml
-		return err
+		restoreConfig()
+		restoreClusterConfig()
+		return fmt.Errorf("%v, %v", err, output)
+	}
+
+	// 4. Run scripts in new workers
+	output, err = execRun("./deploy.py", "scriptblocks", "add_scaled_worker")
+	if err != nil {
+		// TODO(harry): delete the new scaled node.
+		restoreConfig()
+		restoreClusterConfig()
+		return fmt.Errorf("%v, %v", err, output)
 	}
 	// TODO(harry): should we handle labels separately for `kubernetes labels`
 	glog.Infof("Scale up successfully with %v nodes added", delta)
 	return nil
+}
+
+func restoreConfig() {
+	// Restore config.yaml
+	execRun("cp", "deploy/config.yaml.bak", "config.yaml")
+}
+
+func restoreClusterConfig() {
+	// Restore config.yaml
+	execRun("cp", "deploy/cluster.yaml.bak", "cluster.yaml")
 }
 
 // modifyConfigYaml modifies config.yaml
@@ -138,25 +163,41 @@ func modifyConfigYaml(delta int) error {
 
 // OnScaleDown is a function called on cluster scale down
 func OnScaleDown(id string, nodeName string) error {
-	// Modify worker number in config.yaml
+	// Backup config.yaml
+	output, err := execRun("cp", "config.yaml", "deploy/config.yaml.bak")
+	if err != nil {
+		return fmt.Errorf("%v, %v", err, output)
+	}
+
+	// 1. Modify worker number in config.yaml
 	modifyConfigYaml(-1)
 
-	// Delete vm by name
-	_, err := execRun("./az_tools.py", "scaledown", nodeName)
+	// 2. Delete vm by name
+	output, err = execRun("./az_tools.py", "scaledown", nodeName)
 	if err != nil {
-		return err
+		restoreConfig()
+		return fmt.Errorf("%v, %v", err, output)
 	}
 
-	// Generate new cluster.yaml
-	_, err = execRun("./az_tools.py", "genconfig")
+	// Backup cluster.yaml
+	output, err = execRun("cp", "cluster.yaml", "deploy/cluster.yaml.bak")
 	if err != nil {
-		return err
+		restoreConfig()
+		return fmt.Errorf("%v, %v", err, output)
 	}
 
-	// Delete node from kubernetes cluster
-	_, err = execRun("./deploy.py", "kubectl", "delete", "node", nodeName)
+	// 3. Generate new cluster.yaml
+	output, err = execRun("./az_tools.py", "genconfig")
 	if err != nil {
-		return err
+		restoreConfig()
+		restoreClusterConfig()
+		return fmt.Errorf("%v, %v", err, output)
+	}
+
+	// 4. Delete node from kubernetes cluster
+	output, err = execRun("./deploy.py", "kubectl", "delete", "node", nodeName)
+	if err != nil {
+		return fmt.Errorf("%v, %v", err, output)
 	}
 
 	glog.Infof("Scale down node: %v successfully", nodeName)
