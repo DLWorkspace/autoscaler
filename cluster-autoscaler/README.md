@@ -9,30 +9,29 @@ that they can be deleted and their pods will be easily placed on some other, exi
 
 # QuickStart
 
-The current development branch is `cluster`.
+First, deploy a cluster with 1 master 1 node at least. The 1 node will be used as seed worker.
 
 ## Build:
 ```bash
 cd cluster-autoscaler
-git checkout cluster
 make build-binary
 ```
 Put the binary under your `DLworkspace/src/ClusterBootstrap` directory.
 
 ## Run:
 ```bash
-./cluster-autoscaler --v=5 --stderrthreshold=error --logtostderr=true --cloud-provider=aztools --skip-nodes-with-local-storage=false --nodes=1:10:dlws-worker-asg --leader-elect=false --scale-down-enabled=false --kubeconfig=./deploy/kubeconfig/kubeconfig.yaml
+./cluster-autoscaler --v=5 --stderrthreshold=error --logtostderr=true --cloud-provider=aztools --skip-nodes-with-local-storage=false --nodes=1:10:Standard_D3_v2 --leader-elect=false --scale-down-enabled=true --kubeconfig=./deploy/kubeconfig/kubeconfig.yaml --scale-down-unneeded-time=1m --scale-down-delay-after-add=1m
 ```
 ## Note:
 
-`--nodes=1:10:dlws-worker-asg`: dlws-worker-asg is the cluster name of you deploo
-y, with 1 node as min, 10 nodes as max for scaling.
+`--nodes=1:10:Standard_D3_v2`: Standard_D3_v2 is the node group of your deploy, with 1 node as min, 10 nodes as max for scaling. Please note: Standard_D3_v2 should be the name of your seed worker's VM size.
 
 `--scale-down-enabled` if you want to enable scale down (this is a dangerous option)
 
 `./deploy/kubeconfii
-g.yaml` should be present if you are using latest DLworkspace to deploy your cluu
-ster.
+g.yaml` should be present if you are using latest DLworkspace to deploy your cluster.
+
+`--scale-down-unneeded-time=1m` is very short and dangerous, only do this for test, not for production env.
 
 ## Test
 
