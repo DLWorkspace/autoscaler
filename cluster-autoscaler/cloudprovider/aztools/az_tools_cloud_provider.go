@@ -42,6 +42,24 @@ const (
 	scaleToZeroSupported = false
 )
 
+// Big machines are temporarily commented out.
+// TODO(harry): get this list programatically
+var autoprovisionedMachineTypes = []string{
+	"n1-standard-1",
+	"n1-standard-2",
+	"n1-standard-4",
+	"n1-standard-8",
+	"n1-standard-16",
+	"n1-highcpu-2",
+	"n1-highcpu-4",
+	"n1-highcpu-8",
+	"n1-highcpu-16",
+	"n1-highmem-2",
+	"n1-highmem-4",
+	"n1-highmem-8",
+	"n1-highmem-16",
+}
+
 // OnScaleUpFunc is a function called on node group increase in AzToolsCloudProvider.
 // First parameter is the NodeGroup id, second is the increase delta.
 type OnScaleUpFunc func(string, int) error
@@ -128,11 +146,12 @@ func NewAzToolsCloudProvider(
 	rl *cloudprovider.ResourceLimiter,
 ) *AzToolsCloudProvider {
 	return &AzToolsCloudProvider{
-		nodes:           make(map[string]string),
-		groups:          make(map[string]cloudprovider.NodeGroup),
-		onScaleUp:       onScaleUp,
-		onScaleDown:     onScaleDown,
-		resourceLimiter: rl,
+		nodes:            make(map[string]string),
+		groups:           make(map[string]cloudprovider.NodeGroup),
+		onScaleUp:        onScaleUp,
+		onScaleDown:      onScaleDown,
+		resourceLimiter:  rl,
+		machineTemplates: map[string]*schedulercache.NodeInfo{},
 	}
 }
 
@@ -216,6 +235,9 @@ func (azcp *AzToolsCloudProvider) NewNodeGroup(machineType string, labels map[st
 func (azcp *AzToolsCloudProvider) AddNodeGroup(id string, min int, max int) {
 	azcp.Lock()
 	defer azcp.Unlock()
+
+	// TODO(harry): implement this.
+	azcp.machineTemplates[id] = createTemplateForNodeGroup(id)
 
 	azcp.groups[id] = &AzToolsNodeGroup{
 		cloudProvider:   azcp,
