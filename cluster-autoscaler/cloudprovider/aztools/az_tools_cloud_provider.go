@@ -42,24 +42,6 @@ const (
 	scaleToZeroSupported = false
 )
 
-// Big machines are temporarily commented out.
-// TODO(harry): get this list programatically
-var autoprovisionedMachineTypes = []string{
-	"n1-standard-1",
-	"n1-standard-2",
-	"n1-standard-4",
-	"n1-standard-8",
-	"n1-standard-16",
-	"n1-highcpu-2",
-	"n1-highcpu-4",
-	"n1-highcpu-8",
-	"n1-highcpu-16",
-	"n1-highmem-2",
-	"n1-highmem-4",
-	"n1-highmem-8",
-	"n1-highmem-16",
-}
-
 // OnScaleUpFunc is a function called on node group increase in AzToolsCloudProvider.
 // First parameter is the NodeGroup id, second is the increase delta.
 type OnScaleUpFunc func(string, int) error
@@ -231,13 +213,38 @@ func (azcp *AzToolsCloudProvider) NewNodeGroup(machineType string, labels map[st
 	}, nil
 }
 
+// createTemplateForNodeGroup creates nodeInfo for given node group.
+func createTemplateForNodeGroup(grpID string) (*schedulercache.NodeInfo, error) {
+	var node *apiv1.Node
+
+	supportedMachineTypes, err := initSupportedMachineTypes()
+	if err != nil {
+		return nil, err
+	}
+	if v, ok := supportedMachineTypes[grpID]; ok {
+		if node, err = buildNodeFromTemplate(grpID, v); err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, fmt.Errorf("node group: %v is a unsupported machine type", grpID)
+	}
+
+	nodeInfo := schedulercache.NewNodeInfo(cloudprovider.BuildKubeProxy(grpID))
+	nodeInfo.SetNode(node)
+
+	return nodeInfo, nil
+}
+
 // AddNodeGroup adds node group to test cloud provider.
 func (azcp *AzToolsCloudProvider) AddNodeGroup(id string, min int, max int) {
 	azcp.Lock()
 	defer azcp.Unlock()
 
-	// TODO(harry): implement this.
-	azcp.machineTemplates[id] = createTemplateForNodeGroup(id)
+	var err error
+	azcp.machineTemplates[id], err = createTemplateForNodeGroup(id)
+	if err != nil {
+		glog.Warningf("failed to create template for node group %v, err: %v", id, err)
+	}
 
 	azcp.groups[id] = &AzToolsNodeGroup{
 		cloudProvider:   azcp,
