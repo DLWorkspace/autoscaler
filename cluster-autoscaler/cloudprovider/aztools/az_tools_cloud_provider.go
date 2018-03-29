@@ -39,7 +39,9 @@ const (
 	// ProviderName is the cloud provider name for Azure
 	ProviderName = "aztools"
 
-	scaleToZeroSupported = false
+	scaleToZeroSupported = true
+
+	machineTypesFile = "./template/machine-types/azure/machineTypes.yaml"
 )
 
 // OnScaleUpFunc is a function called on node group increase in AzToolsCloudProvider.
@@ -75,7 +77,13 @@ func BuildAzToolsCloudProvider(
 	rl *cloudprovider.ResourceLimiter,
 ) (*AzToolsCloudProvider, error) {
 
-	for _, file := range []string{"./az_tools.py", "./deploy.py", "./config.yaml", "./cluster.yaml"} {
+	for _, file := range []string{
+		"./az_tools.py",
+		"./deploy.py",
+		"./config.yaml",
+		"./cluster.yaml",
+		machineTypesFile,
+	} {
 		if _, err := os.Stat(file); os.IsNotExist(err) {
 			return nil, fmt.Errorf("%v is not found. Please make sure you are under `DLworkspace/src/ClusterBootstrap`",
 				file,

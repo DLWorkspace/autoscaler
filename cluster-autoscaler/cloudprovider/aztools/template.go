@@ -39,35 +39,35 @@ const (
 	millicoresPerCore = 1000
 )
 
-type vmType struct {
-	cpu    int64 `yaml:"cpu"`
-	memory int64 `yaml:"memory"`
-	gpu    int64 `yaml:"gpu"`
+type VmSpec struct {
+	Cpu    int64 `yaml:"cpu"`
+	Memory int64 `yaml:"memoryInMb"`
+	Gpu    int64 `yaml:"gpu"`
 }
 
-type vmTypeMap map[string]vmType
+type MachineInfo map[string]VmSpec
 
 // initSupportedMachineTypes returns supported vm types from configure file.
-func initSupportedMachineTypes() (vmTypeMap, error) {
-	vmTypes := vmTypeMap{}
+func initSupportedMachineTypes() (MachineInfo, error) {
+	vmSpecs := MachineInfo{}
 
-	yamlFile, err := ioutil.ReadFile("./deploy/machineTypes.yaml")
+	yamlFile, err := ioutil.ReadFile(machineTypesFile)
 	if err != nil {
 		return nil, fmt.Errorf("yamlFile.Get err   #%v ", err)
 	}
-	err = yaml.Unmarshal(yamlFile, &vmTypes)
+	err = yaml.Unmarshal(yamlFile, &vmSpecs)
 	if err != nil {
 		return nil, fmt.Errorf("Unmarshal: %v", err)
 	}
 
-	return vmTypes, nil
+	return vmSpecs, nil
 }
 
-func getCpuAndMemoryForMachineType(machineType vmType) (cpu int64, mem int64, err error) {
+func getCpuAndMemoryForMachineType(machineType VmSpec) (cpu int64, mem int64, err error) {
 	return parseCustomMachineType(machineType)
 }
 
-func buildCapacity(machineType vmType) (apiv1.ResourceList, error) {
+func buildCapacity(machineType VmSpec) (apiv1.ResourceList, error) {
 	capacity := apiv1.ResourceList{}
 	// TODO: get a real value.
 	capacity[apiv1.ResourcePods] = *resource.NewQuantity(110, resource.DecimalSI)
@@ -79,14 +79,14 @@ func buildCapacity(machineType vmType) (apiv1.ResourceList, error) {
 	capacity[apiv1.ResourceCPU] = *resource.NewQuantity(cpu, resource.DecimalSI)
 	capacity[apiv1.ResourceMemory] = *resource.NewQuantity(mem, resource.DecimalSI)
 
-	if machineType.gpu > 0 {
-		capacity[gpu.ResourceNvidiaGPU] = *resource.NewQuantity(machineType.gpu, resource.DecimalSI)
+	if machineType.Gpu > 0 {
+		capacity[gpu.ResourceNvidiaGPU] = *resource.NewQuantity(machineType.Gpu, resource.DecimalSI)
 	}
 
 	return capacity, nil
 }
 
-func buildNodeFromTemplate(grpID string, machineType vmType) (*apiv1.Node, error) {
+func buildNodeFromTemplate(grpID string, machineType VmSpec) (*apiv1.Node, error) {
 	node := apiv1.Node{}
 	nodeName := fmt.Sprintf("harrydevbox-worker-%s", grpID, rand.Int63())
 
@@ -150,11 +150,11 @@ func buildNodeFromTemplate(grpID string, machineType vmType) (*apiv1.Node, error
 	return &node, nil
 }
 
-func parseCustomMachineType(machineType vmType) (cpu, mem int64, err error) {
+func parseCustomMachineType(machineType VmSpec) (cpu, mem int64, err error) {
 	// example cpu: 2 memory: 2816
-	cpu = machineType.cpu
+	cpu = machineType.Cpu
 	// Mb to bytes
-	mem = machineType.memory * 1024 * 1024
+	mem = machineType.Memory * 1024 * 1024
 	return
 }
 
