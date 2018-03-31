@@ -35,8 +35,9 @@ import (
 )
 
 const (
-	mbPerGB           = 1000
-	millicoresPerCore = 1000
+	mbPerGB               = 1000
+	millicoresPerCore     = 1000
+	legacyGPUResourceName = "alpha.kubernetes.io/nvidia-gpu"
 )
 
 type VmSpec struct {
@@ -81,6 +82,7 @@ func buildCapacity(machineType VmSpec) (apiv1.ResourceList, error) {
 
 	if machineType.Gpu > 0 {
 		capacity[gpu.ResourceNvidiaGPU] = *resource.NewQuantity(machineType.Gpu, resource.DecimalSI)
+		capacity[legacyGPUResourceName] = *resource.NewQuantity(machineType.Gpu, resource.DecimalSI)
 	}
 
 	return capacity, nil
@@ -147,6 +149,8 @@ func buildNodeFromTemplate(grpID string, machineType VmSpec) (*apiv1.Node, error
 
 	// Ready status
 	node.Status.Conditions = cloudprovider.BuildReadyConditions()
+
+	glog.V(6).Infof("Build node: %#v from template %v", node, grpID)
 	return &node, nil
 }
 

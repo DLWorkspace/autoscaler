@@ -1,0 +1,5 @@
+---
+Standard_NC6:
+  cpu: 6
+  memoryInMb: 56339
+  gpu: 1
